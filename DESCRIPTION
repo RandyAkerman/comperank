@@ -23,12 +23,15 @@ Imports:
     dplyr (>= 0.6.0),
     Rcpp,
     rlang (>= 0.2.0),
-    tibble
+    tibble,
+    hardhat,
+    stats
 Suggests:
     covr,
     knitr,
     rmarkdown,
-    testthat
+    testthat,
+    recipes
 LinkingTo:
     Rcpp
 VignetteBuilder:
