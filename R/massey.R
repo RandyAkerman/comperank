@@ -112,6 +112,7 @@ rank_massey <- function(cr_data, keep_rating = FALSE,
                         ties = c("average", "first", "last",
                                  "random", "max", "min"),
                         round_digits = 7) {
+
   add_ranking(
     rate_massey(cr_data),
     "rating_massey", "ranking_massey",

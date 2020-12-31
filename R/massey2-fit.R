@@ -96,13 +96,18 @@ massey2.recipe <- function(x, data, ...) {
 # Bridge
 
 massey2_bridge <- function(processed, ...) {
+  # TODO: Change verbiage of predictors to matches
+  # TODO: Remove outcomes because it doesn't apply for the massey model
   predictors <- processed$predictors
-  outcome <- processed$outcomes[[1]]
+  # outcome <- processed$outcomes[[1]]
 
-  fit <- massey2_impl(predictors, outcome)
+  # TODO: Write data conversion code here
+  fit <- massey2_impl(predictors)
 
   new_massey2(
-    coefs = fit$coefs,
+    # TODO: Include what we need to make predictions on future game
+    ratings = fit$ratings,
+    rankings = fit$rankings,
     blueprint = processed$blueprint
   )
 }
@@ -111,6 +116,51 @@ massey2_bridge <- function(processed, ...) {
 # ------------------------------------------------------------------------------
 # Implementation
 
-massey2_impl <- function(predictors, outcome) {
-  list(coefs = 1)
+massey2_impl <- function(predictors, type = "desc",
+                         ties = c("average", "first", "last",
+                                  "random", "max", "min"),
+                         round_digits = 7) {
+  # TODO: Move the data conversion code to the bridge function above
+  # browser()
+  # Data conversion ------------------
+  cr <- as_longcr(predictors, repair = TRUE)
+
+  assert_pairgames(cr)
+
+  # Assert used players
+  players <- levels2(cr$player)
+  original_players <- unique(cr$player)
+  assert_used_objects(used = players, original = original_players,
+                      prefix = "rate_massey: ", object_name = "players",
+                      data_name = "competition results")
+  # ----------------------------------------------------
+
+  # Compute Massey ratings
+  massey_mat <- - h2h_mat(cr, !!h2h_funs[["num"]], fill = 0)
+  diag(massey_mat) <- 0
+  diag(massey_mat) <- - rowSums(massey_mat)
+
+  sum_score_mat <- h2h_mat(cr, !!h2h_funs[["sum_score"]], fill = 0)
+  diag(sum_score_mat) <- 0
+
+  score_for <- rowSums(sum_score_mat)
+  score_against <- colSums(sum_score_mat)
+  score_diff <- score_for - score_against
+
+  massey_mat_mod <- massey_mat
+  massey_mat_mod[nrow(massey_mat_mod), ] <- 1
+  score_diff_mod <- score_diff
+  score_diff_mod[length(score_diff_mod)] <- 0
+
+  res_vec <- solve(massey_mat_mod, score_diff_mod)
+  # TODO: Add in the offensive and defensive ratings and rankings vectors
+  ratings <- enframe_vec(res_vec, unique_levels(cr$player), "player", "rating_massey")
+
+  # TODO: Output rankings as a tibble
+  browser()
+  rankings <- comperank::round_rank(
+    ratings[[2]], type = type,
+    ties = ties, round_digits = round_digits)
+  # return a list of rankings and ratings
+  list(rankings = rankings, ratings = ratings)
 }
