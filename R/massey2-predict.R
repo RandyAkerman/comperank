@@ -34,14 +34,15 @@ predict.massey2 <- function(object, new_data, type = "numeric", ...) {
 }
 
 valid_massey2_predict_types <- function() {
-  c("numeric")
+  c("numeric", "class")
 }
 
 # ------------------------------------------------------------------------------
 # Bridge
 
 predict_massey2_bridge <- function(type, model, predictors) {
-  predictors <- as.matrix(predictors)
+  # TODO: Write two tracks one where predictors are null i.e no shcedule of upcoming games is given or if an upcoming game is given for new _data
+  # predictors <- as.matrix(predictors)
 
   predict_function <- get_massey2_predict_function(type)
   predictions <- predict_function(model, predictors)
@@ -51,15 +52,34 @@ predict_massey2_bridge <- function(type, model, predictors) {
   predictions
 }
 
+# TODO: Decide if the terminology in the type of predictions we want should be gambling or data science
 get_massey2_predict_function <- function(type) {
   switch(
     type,
-    numeric = predict_massey2_numeric
+    class = predict_massey2_class,
+    numeric = predict_massey2_spread
   )
 }
 
 # ------------------------------------------------------------------------------
 # Implementation
+
+predict_massey2_class <- function(model, predictors) {
+  # TODO: Clean this up a bit.  It feels clunky
+  # TODO: validate that this works on game with more than 2 players
+  # TODO: check on the class names.  maybe make it something nicer
+  matchups <-
+    predictors %>%
+    dplyr::left_join(model$rankings, by = "player") %>%
+    dplyr::group_by(game) %>%
+    dplyr::mutate(pred_class = dplyr::if_else(ranking_massey == min(ranking_massey),
+                                         "winner", "loser")) %>%
+    dplyr::ungroup()
+
+  predictions <- as.factor(matchups$pred_class)
+
+  hardhat::spruce_class(predictions)
+}
 
 predict_massey2_numeric <- function(model, predictors) {
   predictions <- rep(1L, times = nrow(predictors))

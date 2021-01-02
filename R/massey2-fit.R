@@ -121,7 +121,6 @@ massey2_impl <- function(predictors, type = "desc",
                                   "random", "max", "min"),
                          round_digits = 7) {
   # TODO: Move the data conversion code to the bridge function above
-  # browser()
   # Data conversion ------------------
   cr <- as_longcr(predictors, repair = TRUE)
 
@@ -156,11 +155,13 @@ massey2_impl <- function(predictors, type = "desc",
   # TODO: Add in the offensive and defensive ratings and rankings vectors
   ratings <- enframe_vec(res_vec, unique_levels(cr$player), "player", "rating_massey")
 
-  # TODO: Output rankings as a tibble
-  browser()
-  rankings <- comperank::round_rank(
-    ratings[[2]], type = type,
+  rank_vec <- comperank::round_rank(
+    res_vec, type = type,
     ties = ties, round_digits = round_digits)
+
+  rankings <- enframe_vec(rank_vec, unique_levels(cr$player), "player", "ranking_massey")
+
   # return a list of rankings and ratings
+  # TODO: Decide if we want to return the named vector or the tibble
   list(rankings = rankings, ratings = ratings)
 }
