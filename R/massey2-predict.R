@@ -57,7 +57,7 @@ get_massey2_predict_function <- function(type) {
   switch(
     type,
     class = predict_massey2_class,
-    numeric = predict_massey2_spread
+    numeric = predict_massey2_numeric
   )
 }
 
@@ -82,6 +82,16 @@ predict_massey2_class <- function(model, predictors) {
 }
 
 predict_massey2_numeric <- function(model, predictors) {
-  predictions <- rep(1L, times = nrow(predictors))
+  browser()
+  matchups <-
+    predictors %>%
+    dplyr::left_join(model$ratings, by = "player") %>%
+    dplyr::group_by(game) %>%
+    dplyr::mutate(pred = dplyr::if_else(ranking_massey == min(ranking_massey),
+                                              "winner", "loser")) %>%
+    dplyr::ungroup()
+
+  predictions <- as.factor(matchups$pred)
+
   hardhat::spruce_numeric(predictions)
 }

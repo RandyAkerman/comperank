@@ -133,9 +133,11 @@ massey2_impl <- function(predictors, type = "desc",
                       prefix = "rate_massey: ", object_name = "players",
                       data_name = "competition results")
   # ----------------------------------------------------
-
+  browser()
   # Compute Massey ratings
-  massey_mat <- - h2h_mat(cr, !!h2h_funs[["num"]], fill = 0)
+  h2h_mat <- h2h_mat(cr, !!h2h_funs[["num"]], fill = 0)
+  games_played_mat <- h2h_mat
+  massey_mat <- -h2h_mat
   diag(massey_mat) <- 0
   diag(massey_mat) <- - rowSums(massey_mat)
 
@@ -152,8 +154,21 @@ massey2_impl <- function(predictors, type = "desc",
   score_diff_mod[length(score_diff_mod)] <- 0
 
   res_vec <- solve(massey_mat_mod, score_diff_mod)
-  # TODO: Add in the offensive and defensive ratings and rankings vectors
-  ratings <- enframe_vec(res_vec, unique_levels(cr$player), "player", "rating_massey")
+
+  def_vec <- solve(h2h_mat, as.numeric(games_played_mat %*% res_vec) - rowSums(sum_score_mat))
+
+  off_vec <- res_vec - def_vec
+
+  overall_ratings <- enframe_vec(res_vec, unique_levels(cr$player), "player", "rating_overall")
+  defensive_rating <- enframe_vec(def_vec, unique_levels(cr$player), "player", "rating_defensive")
+  offensive_rating <- enframe_vec(off_vec, unique_levels(cr$player), "player", "rating_offensive")
+
+  ratings <-
+    tibble::tibble(player = original_players) %>%
+    dplyr::left_join(overall_ratings) %>%
+    dplyr::left_join(defensive_rating) %>%
+    dplyr::left_join(offensive_rating)
+
 
   rank_vec <- comperank::round_rank(
     res_vec, type = type,
