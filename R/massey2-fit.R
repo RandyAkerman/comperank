@@ -1,6 +1,6 @@
 #' Fit a `massey2`
 #'
-#' `massey2()` fits a model.
+#' `massey2()` fits a model using the Massey Method
 #'
 #' @param x Depending on the context:
 #'

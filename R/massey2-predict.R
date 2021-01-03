@@ -71,8 +71,8 @@ predict_massey2_class <- function(model, predictors) {
   matchups <-
     predictors %>%
     dplyr::left_join(model$rankings, by = "player") %>%
-    dplyr::group_by(game) %>%
-    dplyr::mutate(pred_class = dplyr::if_else(ranking_massey == min(ranking_massey),
+    dplyr::group_by('game') %>%
+    dplyr::mutate(pred_class = dplyr::if_else('ranking_massey' == min('ranking_massey'),
                                          "winner", "loser")) %>%
     dplyr::ungroup()
 
@@ -86,8 +86,8 @@ predict_massey2_numeric <- function(model, predictors) {
   matchups <-
     predictors %>%
     dplyr::left_join(model$ratings, by = "player") %>%
-    dplyr::group_by(game) %>%
-    dplyr::mutate(pred = rating_offensive - sum(rating_defensive)+rating_defensive) %>%
+    dplyr::group_by('game') %>%
+    dplyr::mutate(pred = 'rating_offensive' - sum('rating_defensive')+'rating_defensive') %>%
     dplyr::ungroup()
 
   predictions <- as.numeric(matchups$pred)

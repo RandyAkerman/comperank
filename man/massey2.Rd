@@ -52,7 +52,7 @@ and the predictor terms on the right-hand side.}
 A \code{massey2} object.
 }
 \description{
-\code{massey2()} fits a model.
+\code{massey2()} fits a model using the Massey Method
 }
 \examples{
 predictors <- mtcars[, -1]
