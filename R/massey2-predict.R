@@ -82,16 +82,15 @@ predict_massey2_class <- function(model, predictors) {
 }
 
 predict_massey2_numeric <- function(model, predictors) {
-  browser()
+  # TODO: Figure out how this scales to games with more than 2 players or warn a user from doing so
   matchups <-
     predictors %>%
     dplyr::left_join(model$ratings, by = "player") %>%
     dplyr::group_by(game) %>%
-    dplyr::mutate(pred = dplyr::if_else(ranking_massey == min(ranking_massey),
-                                              "winner", "loser")) %>%
+    dplyr::mutate(pred = rating_offensive - sum(rating_defensive)+rating_defensive) %>%
     dplyr::ungroup()
 
-  predictions <- as.factor(matchups$pred)
+  predictions <- as.numeric(matchups$pred)
 
   hardhat::spruce_numeric(predictions)
 }

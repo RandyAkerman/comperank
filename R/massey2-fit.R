@@ -133,10 +133,11 @@ massey2_impl <- function(predictors, type = "desc",
                       prefix = "rate_massey: ", object_name = "players",
                       data_name = "competition results")
   # ----------------------------------------------------
-  browser()
   # Compute Massey ratings
   h2h_mat <- h2h_mat(cr, !!h2h_funs[["num"]], fill = 0)
   games_played_mat <- h2h_mat
+  # TODO: Add this to comepres::h2h_funs as games_played
+  games_played_mat[upper.tri(games_played_mat) | lower.tri(games_played_mat)] <- 0
   massey_mat <- -h2h_mat
   diag(massey_mat) <- 0
   diag(massey_mat) <- - rowSums(massey_mat)
@@ -165,11 +166,11 @@ massey2_impl <- function(predictors, type = "desc",
 
   ratings <-
     tibble::tibble(player = original_players) %>%
-    dplyr::left_join(overall_ratings) %>%
-    dplyr::left_join(defensive_rating) %>%
-    dplyr::left_join(offensive_rating)
+    dplyr::left_join(overall_ratings, by = "player") %>%
+    dplyr::left_join(defensive_rating, by = "player") %>%
+    dplyr::left_join(offensive_rating, by = "player")
 
-
+  # TODO: Implement the offensive and defensive ranking.  Look into dplyr::across
   rank_vec <- comperank::round_rank(
     res_vec, type = type,
     ties = ties, round_digits = round_digits)
