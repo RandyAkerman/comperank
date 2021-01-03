@@ -43,7 +43,6 @@ valid_massey2_predict_types <- function() {
 predict_massey2_bridge <- function(type, model, predictors) {
   # TODO: Write two tracks one where predictors are null i.e no shcedule of upcoming games is given or if an upcoming game is given for new _data
   # predictors <- as.matrix(predictors)
-
   predict_function <- get_massey2_predict_function(type)
   predictions <- predict_function(model, predictors)
 
@@ -67,12 +66,11 @@ get_massey2_predict_function <- function(type) {
 predict_massey2_class <- function(model, predictors) {
   # TODO: Clean this up a bit.  It feels clunky
   # TODO: validate that this works on game with more than 2 players
-  # TODO: check on the class names.  maybe make it something nicer
   matchups <-
     predictors %>%
     dplyr::left_join(model$rankings, by = "player") %>%
-    dplyr::group_by('game') %>%
-    dplyr::mutate(pred_class = dplyr::if_else('ranking_massey' == min('ranking_massey'),
+    dplyr::group_by(.data$game) %>%
+    dplyr::mutate(pred_class = dplyr::if_else(.data$ranking_massey == min(.data$ranking_massey),
                                          "winner", "loser")) %>%
     dplyr::ungroup()
 
@@ -86,8 +84,8 @@ predict_massey2_numeric <- function(model, predictors) {
   matchups <-
     predictors %>%
     dplyr::left_join(model$ratings, by = "player") %>%
-    dplyr::group_by('game') %>%
-    dplyr::mutate(pred = 'rating_offensive' - sum('rating_defensive')+'rating_defensive') %>%
+    dplyr::group_by(.data$game) %>%
+    dplyr::mutate(pred = .data$rating_offensive - sum(.data$rating_defensive) + .data$rating_defensive) %>%
     dplyr::ungroup()
 
   predictions <- as.numeric(matchups$pred)

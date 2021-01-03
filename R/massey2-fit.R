@@ -30,20 +30,24 @@
 #' A `massey2` object.
 #'
 #' @examples
-#' predictors <- mtcars[, -1]
-#' outcome <- mtcars[, 1]
+#' predictors <-
+#'   ncaa2005 %>%
+#'   dplyr::select(game, player)
+#'
+#' outcome <-
+#'   ncaa2005 %>%
+#'   dplyr::select(score)
 #'
 #' # XY interface
 #' mod <- massey2(predictors, outcome)
 #'
 #' # Formula interface
-#' mod2 <- massey2(mpg ~ ., mtcars)
+#' mod2 <- massey2(score ~ ., ncaa2005)
 #'
 #' # Recipes interface
 #' library(recipes)
-#' rec <- recipe(mpg ~ ., mtcars)
-#' rec <- step_log(rec, disp)
-#' mod3 <- massey2(rec, mtcars)
+#' rec <- recipe(score ~ ., ncaa2005)
+#' mod3 <- massey2(rec, ncaa2005)
 #'
 #' @export
 massey2 <- function(x, ...) {
@@ -79,7 +83,8 @@ massey2.matrix <- function(x, y, ...) {
 #' @export
 #' @rdname massey2
 massey2.formula <- function(formula, data, ...) {
-  processed <- hardhat::mold(formula, data)
+  processed <- hardhat::mold(formula, data,
+                             blueprint = hardhat::default_formula_blueprint(indicators = "none"))
   massey2_bridge(processed, ...)
 }
 
@@ -96,16 +101,23 @@ massey2.recipe <- function(x, data, ...) {
 # Bridge
 
 massey2_bridge <- function(processed, ...) {
-  # TODO: Change verbiage of predictors to matches
-  # TODO: Remove outcomes because it doesn't apply for the massey model
-  predictors <- processed$predictors
-  # outcome <- processed$outcomes[[1]]
+  # TODO: Clean this up, it feels like I am jumping through hoops to get the XY blueprint working
+  cr_data <-
+    cbind(processed$predictors, processed$outcomes) %>%
+    comperes::as_longcr()
 
-  # TODO: Write data conversion code here
-  fit <- massey2_impl(predictors)
+  assert_pairgames(cr_data)
+
+  # Assert used players
+  players <- levels2(cr_data$player)
+  original_players <- unique(cr_data$player)
+  assert_used_objects(used = players, original = original_players,
+                      prefix = "rate_massey: ", object_name = "players",
+                      data_name = "competition results")
+
+  fit <- massey2_impl(cr_data, players, original_players)
 
   new_massey2(
-    # TODO: Include what we need to make predictions on future game
     ratings = fit$ratings,
     rankings = fit$rankings,
     blueprint = processed$blueprint
@@ -116,25 +128,13 @@ massey2_bridge <- function(processed, ...) {
 # ------------------------------------------------------------------------------
 # Implementation
 
-massey2_impl <- function(predictors, type = "desc",
+massey2_impl <- function(cr_data, players, original_players, type = "desc",
                          ties = c("average", "first", "last",
                                   "random", "max", "min"),
                          round_digits = 7) {
-  # TODO: Move the data conversion code to the bridge function above
-  # Data conversion ------------------
-  cr <- as_longcr(predictors, repair = TRUE)
 
-  assert_pairgames(cr)
-
-  # Assert used players
-  players <- levels2(cr$player)
-  original_players <- unique(cr$player)
-  assert_used_objects(used = players, original = original_players,
-                      prefix = "rate_massey: ", object_name = "players",
-                      data_name = "competition results")
-  # ----------------------------------------------------
   # Compute Massey ratings
-  h2h_mat <- h2h_mat(cr, !!h2h_funs[["num"]], fill = 0)
+  h2h_mat <- h2h_mat(cr_data, !!h2h_funs[["num"]], fill = 0)
   games_played_mat <- h2h_mat
   # TODO: Add this to comepres::h2h_funs as games_played
   games_played_mat[upper.tri(games_played_mat) | lower.tri(games_played_mat)] <- 0
@@ -142,7 +142,7 @@ massey2_impl <- function(predictors, type = "desc",
   diag(massey_mat) <- 0
   diag(massey_mat) <- - rowSums(massey_mat)
 
-  sum_score_mat <- h2h_mat(cr, !!h2h_funs[["sum_score"]], fill = 0)
+  sum_score_mat <- h2h_mat(cr_data, !!h2h_funs[["sum_score"]], fill = 0)
   diag(sum_score_mat) <- 0
 
   score_for <- rowSums(sum_score_mat)
@@ -160,9 +160,9 @@ massey2_impl <- function(predictors, type = "desc",
 
   off_vec <- res_vec - def_vec
 
-  overall_ratings <- enframe_vec(res_vec, unique_levels(cr$player), "player", "rating_overall")
-  defensive_rating <- enframe_vec(def_vec, unique_levels(cr$player), "player", "rating_defensive")
-  offensive_rating <- enframe_vec(off_vec, unique_levels(cr$player), "player", "rating_offensive")
+  overall_ratings <- enframe_vec(res_vec, unique_levels(cr_data$player), "player", "rating_overall")
+  defensive_rating <- enframe_vec(def_vec, unique_levels(cr_data$player), "player", "rating_defensive")
+  offensive_rating <- enframe_vec(off_vec, unique_levels(cr_data$player), "player", "rating_offensive")
 
   ratings <-
     tibble::tibble(player = original_players) %>%
@@ -175,9 +175,8 @@ massey2_impl <- function(predictors, type = "desc",
     res_vec, type = type,
     ties = ties, round_digits = round_digits)
 
-  rankings <- enframe_vec(rank_vec, unique_levels(cr$player), "player", "ranking_massey")
+  rankings <- enframe_vec(rank_vec, unique_levels(cr_data$player), "player", "ranking_massey")
 
   # return a list of rankings and ratings
-  # TODO: Decide if we want to return the named vector or the tibble
   list(rankings = rankings, ratings = ratings)
 }

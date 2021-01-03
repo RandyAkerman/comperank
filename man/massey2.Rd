@@ -55,19 +55,23 @@ A \code{massey2} object.
 \code{massey2()} fits a model using the Massey Method
 }
 \examples{
-predictors <- mtcars[, -1]
-outcome <- mtcars[, 1]
+predictors <-
+  ncaa2005 \%>\%
+  dplyr::select(game, player)
+
+outcome <-
+  ncaa2005 \%>\%
+  dplyr::select(score)
 
 # XY interface
 mod <- massey2(predictors, outcome)
 
 # Formula interface
-mod2 <- massey2(mpg ~ ., mtcars)
+mod2 <- massey2(score ~ ., ncaa2005)
 
 # Recipes interface
 library(recipes)
-rec <- recipe(mpg ~ ., mtcars)
-rec <- step_log(rec, disp)
-mod3 <- massey2(rec, mtcars)
+rec <- recipe(score ~ ., ncaa2005)
+mod3 <- massey2(rec, ncaa2005)
 
 }
