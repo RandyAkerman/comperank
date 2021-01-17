@@ -1,4 +1,4 @@
-#' Fit a `massey2`
+#' Massey method
 #'
 #' `massey2()` fits a model using the Massey Method
 #'
@@ -102,8 +102,17 @@ massey2.recipe <- function(x, data, ...) {
 
 massey2_bridge <- function(processed, ...) {
   # TODO: Clean this up, it feels like I am jumping through hoops to get the XY blueprint working
+
+  # NOTE: The filtering of NA in the player column is a deviation from the
+  # upstream comperank massey function.  I think it makes sense to do so because
+  # otherwise the massey matrix diagonals reflect games played against unknown
+  # players.  It doesn't seem to make a difference in the overall rating but it
+  # does make a difference in the offensive and defensive ratings.
+
   cr_data <-
     cbind(processed$predictors, processed$outcomes) %>%
+    dplyr::group_by(game) %>%
+    dplyr::filter(!(NA %in% player)) %>%
     comperes::as_longcr()
 
   assert_pairgames(cr_data)
@@ -160,22 +169,39 @@ massey2_impl <- function(cr_data, players, original_players, type = "desc",
 
   off_vec <- res_vec - def_vec
 
-  overall_ratings <- enframe_vec(res_vec, unique_levels(cr_data$player), "player", "rating_overall")
-  defensive_rating <- enframe_vec(def_vec, unique_levels(cr_data$player), "player", "rating_defensive")
-  offensive_rating <- enframe_vec(off_vec, unique_levels(cr_data$player), "player", "rating_offensive")
+  # TODO: There has got to be a tidy-er way to do this
+  overall_ratings <- enframe_vec(res_vec, unique_levels(cr_data$player),
+                                 "player", "rating_overall")
+  defensive_rating <- enframe_vec(def_vec, unique_levels(cr_data$player),
+                                  "player", "rating_defensive")
+  offensive_rating <- enframe_vec(off_vec, unique_levels(cr_data$player),
+                                  "player", "rating_offensive")
 
   ratings <-
-    tibble::tibble(player = original_players) %>%
+    tibble::tibble(player = unique_levels(cr_data$player)) %>%
     dplyr::left_join(overall_ratings, by = "player") %>%
     dplyr::left_join(defensive_rating, by = "player") %>%
     dplyr::left_join(offensive_rating, by = "player")
 
-  # TODO: Implement the offensive and defensive ranking.  Look into dplyr::across
-  rank_vec <- comperank::round_rank(
-    res_vec, type = type,
-    ties = ties, round_digits = round_digits)
+  overall_rank_vec <- comperank::round_rank(res_vec, type = type, ties = ties,
+                                            round_digits = round_digits)
+  defensive_rank_vec <- comperank::round_rank(def_vec, type = type, ties = ties,
+                                            round_digits = round_digits)
+  offensive_rank_vec <- comperank::round_rank(off_vec, type = type, ties = ties,
+                                            round_digits = round_digits)
 
-  rankings <- enframe_vec(rank_vec, unique_levels(cr_data$player), "player", "ranking_massey")
+  overall_rankings <- enframe_vec(overall_rank_vec, unique_levels(cr_data$player),
+                                  "player", "ranking_overall")
+  defensive_rankings <- enframe_vec(defensive_rank_vec, unique_levels(cr_data$player),
+                                  "player", "ranking_defensive")
+  offensive_rankings <- enframe_vec(offensive_rank_vec, unique_levels(cr_data$player),
+                                  "player", "ranking_offensive")
+
+  rankings <-
+    tibble::tibble(player = unique_levels(cr_data$player)) %>%
+    dplyr::left_join(overall_rankings, by = "player") %>%
+    dplyr::left_join(defensive_rankings, by = "player") %>%
+    dplyr::left_join(offensive_rankings, by = "player")
 
   # return a list of rankings and ratings
   list(rankings = rankings, ratings = ratings)
