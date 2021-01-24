@@ -109,20 +109,55 @@ massey2_bridge <- function(processed, ...) {
   # players.  It doesn't seem to make a difference in the overall rating but it
   # does make a difference in the offensive and defensive ratings.
 
+  # TODO: Write warning about filtering games with NA players
+  # TODO: Write warning about converting players as factors
+
   cr_data <-
     cbind(processed$predictors, processed$outcomes) %>%
     dplyr::group_by(game) %>%
-    dplyr::filter(!(NA %in% player)) %>%
     comperes::as_longcr()
+
+  if (is.factor(cr_data$player)==FALSE) {
+    message('player datatype will be converted to a factor')
+    cr_data <-
+      cr_data %>%
+      dplyr::mutate(
+        player = forcats::as_factor(player),
+        player = forcats::fct_explicit_na(player))
+  }
+
+  if (anyNA(cr_data$player)==TRUE) {
+    message('Matches with player `NA` will be removed')
+    cr_data <-
+      cr_data %>%
+      dplyr::group_by(game) %>%
+      dplyr::filter(!(NA %in% player))
+  }
+
+  if (length(setdiff(levels(cr_data$player),cr_data$player)) != 0) {
+    # TODO: Improve this message by lising which players are missing
+    message('Dropping levels in the player factor that do not appear in games')
+    cr_data <-
+      cr_data %>%
+      dplyr::mutate(player = forcats::fct_drop(player))
+  }
+
+  # cr_data <-
+  #   cbind(processed$predictors, processed$outcomes) %>%
+  #   dplyr::group_by(game) %>%
+  #   dplyr::filter(!(NA %in% player)) %>%
+  #   dplyr::mutate(player = forcats::as_factor(player),
+  #                 player = forcats::fct_drop(player)) %>%
+  #   comperes::as_longcr()
 
   assert_pairgames(cr_data)
 
   # Assert used players
-  players <- levels2(cr_data$player)
-  original_players <- unique(cr_data$player)
-  assert_used_objects(used = players, original = original_players,
-                      prefix = "rate_massey: ", object_name = "players",
-                      data_name = "competition results")
+  # players <- levels2(cr_data$player)
+  # original_players <- unique(cr_data$player)
+  # assert_used_objects(used = players, original = original_players,
+  #                     prefix = "rate_massey: ", object_name = "players",
+  #                     data_name = "competition results")
 
   fit <- massey2_impl(cr_data, players, original_players)
 

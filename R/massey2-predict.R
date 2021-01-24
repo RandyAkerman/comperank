@@ -41,7 +41,7 @@ valid_massey2_predict_types <- function() {
 # Bridge
 
 predict_massey2_bridge <- function(type, model, predictors) {
-  # TODO: Write two tracks one where predictors are null i.e no shcedule of upcoming games is given or if an upcoming game is given for new _data
+  # TODO: Write two tracks one where predictors are null i.e no schedule of upcoming games is given or if an upcoming game is given for new _data
   # predictors <- as.matrix(predictors)
   predict_function <- get_massey2_predict_function(type)
   predictions <- predict_function(model, predictors)
@@ -70,7 +70,7 @@ predict_massey2_class <- function(model, predictors) {
     predictors %>%
     dplyr::left_join(model$rankings, by = "player") %>%
     dplyr::group_by(.data$game) %>%
-    dplyr::mutate(pred_class = dplyr::if_else(.data$ranking_massey == min(.data$ranking_massey),
+    dplyr::mutate(pred_class = dplyr::if_else(.data$ranking_overall == min(.data$ranking_overall),
                                          "winner", "loser")) %>%
     dplyr::ungroup()
 
